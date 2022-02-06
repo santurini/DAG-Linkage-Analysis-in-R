@@ -1,3 +1,18 @@
+# Import ------------------------------------------------------------------
+
+packages = c('clrdag', 'car', 'svMisc', 'MASS')
+lapply(packages, require, character.only = TRUE)
+
+# Parameters --------------------------------------------------------------
+
+p = 10
+n = 100
+alpha = 0.05
+M = 200
+mu = 1
+num_edges = 4
+alt = 'random'
+
 # Utilities ---------------------------------------------------------------
 
 generate_matrix <- function(p){
@@ -23,7 +38,7 @@ generate_data <- function(A, n, p){
   
 }
 
-split_data <- function(X, prop = 0.8){
+split_data <- function(X, prop = 0.5){
   
   # This function splits the data in train and test set
   # given a split proportion
@@ -47,7 +62,7 @@ generate_edge <- function(idx){
   
 }
 
-generate_hypo <- function(p, idx, num_edges){
+generate_hypo <- function(p, n, idx, num_edges){
   
   # this function generates a null hypothesis for the linkage test
   # by setting in A to 0 every cell that is a nonzero in D
@@ -59,10 +74,14 @@ generate_hypo <- function(p, idx, num_edges){
     D[edge$a, edge$b] = 1
     A[edge$a, edge$b] = 0
   }
-  return(list(D=D, A=A))
+  
+  X = generate_data(A, n, p)
+  
+  return(list(D=D, X=X))
+  
 }
 
-generate_alt_hypo <- function(p, idx, num_edges, type = 'random'){
+generate_alt_hypo <- function(p, n, idx, num_edges, type = 'random'){
   
   # this function generates an alternative hypothesis for the linkage test
   # the parameter type chooses the type of alternative hypothesis
@@ -99,52 +118,40 @@ generate_alt_hypo <- function(p, idx, num_edges, type = 'random'){
       A[edge$a, edge$b] = sign(runif(1, -1, 1))  # the farest value to 0 is {-1, 1}
     }
   }
-  return(list(D=D, A=A))
+  
+  X = generate_data(A, n, p)
+  
+  return(list(D=D, X=X))
 }
 
 # Test statistics ---------------------------------------------------------
 
-Un <- function(train, test, idx, D){
+Un <- function(tr, te, idx, mu, D){
+  
   # estimate the Adjacency matrix
-  out <- MLEdag(X=train,D=D,tau=0.35,mu=1,rho=1.2,trace_obj=FALSE)
+  out <- MLEdag(X=tr,D=D,tau=0.35,mu=mu,rho=1.2,trace_obj=FALSE)
   A.0 = out$A.H0; A = out$A.H1
   # estimate sigma for constrained and unconstrained
-  sig_alt = sigma_est(A, test, idx)
-  sig_null = sigma_est(A.0, train, idx)
+  sig_alt = sigma_est(A, te, idx)
+  sig_null = sigma_est(A.0, tr, idx)
   # compute the test statistic
-  x = lik_est(A, train, idx, sig_alt) - lik_est(A.0, train, idx, sig_null)
+  x = lik_est(A, tr, idx, sig_alt) - lik_est(A.0, tr, idx, sig_null)
   return(x)
-} 
+  
+}
+
 
 # Universal test function ----------------------------------------------------------
 
-linkage_test <- function(p, n, alpha, num_edges, alternative = NULL){
-  
-  # this function implements a universal linkage test
-  
-  idx = c(1:p)
-  
-  # generate hypothesis (null or alternative)
-  if(is.null(alternative)){
-    hypo = generate_hypo(p, idx, num_edges)
-    D = hypo$D
-    A = hypo$A
-  }
-  else{
-    hypo = generate_alt_hypo(p, idx, num_edges, alternative)
-    D = hypo$D
-    A = hypo$A
-  }
-  
-  # generate the data
-  X = generate_data(A, n, p)
+linkage_test <- function(X, D, idx, alpha, mu){
   
   # split the data
-  split_train_test = split_data(X, 0.5)
-  train = split_train_test$train; test = split_train_test$test
+  split = split_data(X)
+  tr = split$train; te = split$test
   
-  # compute the test statistics Un and Wn
-  Un_base = Un(train, test, idx, D); Un_swap = Un(test, train, idx, D)
+  # compute the test statistics U_n and W_n
+  Un_base = Un(tr, te, idx, mu, D)
+  Un_swap = Un(te, tr, idx, mu, D)
   Wn = (exp(Un_base) + exp(Un_swap))/2
   
   # test decision
@@ -156,45 +163,57 @@ linkage_test <- function(p, n, alpha, num_edges, alternative = NULL){
 
 # Size --------------------------------------------------------------------
 
-compute_size <- function(M, p, n, alpha, num_edges){
+compute_size <- function(M, p, n, alpha, num_edges, mu){
   
   # this function computes the size of a linkage test
   # running M tests and computing the size as the number of rejections
   # over the number of simulations under the null hypothesis
   
+  idx = c(1:p)
+  hypo = generate_hypo(p, n, idx, num_edges)
+  D = hypo$D; X = hypo$X
+  
   size_lrt = rep(NA, M)
   size_crossfit = rep(NA, M)
+  
   for(m in 1:M){
-    test <- linkage_test(p, n, alpha, num_edges)
-    size_lrt[m] = test$lrt
-    size_crossfit[m] = test$crossfit
+    exit <- linkage_test(X, D, idx, alpha, mu)
+    size_lrt[m] = exit$lrt
+    size_crossfit[m] = exit$crossfit
+    progress(m, M)
   }
   
-  cat('LRT size: ', sum(size_lrt)/M, '\n')
+  cat('\nLRT size: ', sum(size_lrt)/M, '\n')
   cat('Crossfit size: ', sum(size_crossfit)/M)
 }
 
-compute_size(50, 10, 150, alpha, 1)
+compute_size(M, p, n, alpha, num_edges, mu)
 
 # Power -------------------------------------------------------------------
 
-compute_power <- function(M, p, n, alpha, num_edges, alternative = 'random'){
+compute_power <- function(M, p, n, alpha, num_edges, mu, alt = 'random'){
   
   # this function computes the power of a linkage test running M tests
   # and computing the power as one minus the number of acceptances
   # over the number of simulations under the alternative hypothesis
   
+  idx = c(1:p)
+  hypo = generate_alt_hypo(p, n, idx, num_edges, alt)
+  D = hypo$D; X = hypo$X
+  
   power_lrt = rep(NA, M)
   power_crossfit = rep(NA, M)
+  
   for(m in 1:M){
-    test <- linkage_test(p, n, alpha, num_edges, alternative)
-    power_lrt[m] = test$lrt
-    power_crossfit[m] = test$crossfit
+    exit <- linkage_test(X, D, idx, alpha, mu)
+    power_lrt[m] = exit$lrt
+    power_crossfit[m] = exit$crossfit
+    progress(m, M)
   }
   
-  cat('LRT power: ', 1 - (M-sum(power_lrt))/M, '\n')
+  cat('\nLRT power: ', 1 - (M-sum(power_lrt))/M, '\n')
   cat('Crossfit power: ', 1 - (M-sum(power_crossfit))/M)
 }
 
-compute_power(50, 10, 100, alpha, 1)
+compute_power(M, p, n, alpha, num_edges, mu)
 
