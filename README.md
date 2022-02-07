@@ -4,10 +4,10 @@
 ## Content
 
 **scripts** this folder contains the scripts:
-  - _Estimates.R_ which contains the function to estimate sigma and the log-Likelihood
   - _LinkageTest.R_ which contains the implementation of the test for a single link
   - _PathwayTest.R_ which contains the implementation of the test for a directed pathway
   - _Cytometry.R_ which contains the application of the tests on real data
+  - _functions.R_ which contains all the functions to run the scripts
 
 **cytometry-data.xlsx** is the excel file with 9 different sheets, each one for a different protein
 
