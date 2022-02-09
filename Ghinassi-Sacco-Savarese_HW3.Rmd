@@ -1,0 +1,196 @@
+---
+title: "HW3-SDS"
+output: html_document
+---
+## 2. Statistics for universal test 
+
+We implement two universal statistics based on a random split of the data into a train and test set of equal size $n$. The first one is Split Likelihood Ratio:
+\begin{align*}
+U_n = \dfrac {  \mathcal{L}(\hat{\theta}^\color{red}{Te}| D_n^\color{blue}{Tr})}{   \mathcal{L}(\hat{\theta_0}^\color{blue}{Tr}| D_n^\color{blue}{Tr})  }
+\end{align*}
+
+The second one is Cross-Fit Likelihood Ratio:
+\begin{align*}
+W_n = \dfrac { U_n + U_n^{swap}}{   2  }
+\end{align*}
+
+where  $U_n^{swap}$ is the same as $Un$ after swapping the roles of $D_n^\color{blue}{Tr}$ and $D_n^\color{red}{Te}$.
+We use the following functions to generate the adjacency matrix $A$ and the corresponding $X$ data (using the linear structural equation model $(3)$ of the paper).
+
+
+```{r,eval=FALSE}
+
+generate_matrix <- function(p){
+  
+  # this function generates a random adjacency
+  # matrix given a sparsity parameter
+  
+  sparsity = 2/p
+  A <- matrix(rbinom(p*p, 1, sparsity)*sign(runif(p*p, -1, 1))*runif(p*p, 0.7, 1), p, p)
+  A[upper.tri(A, diag=TRUE)] <- 0
+  return(A)
+  
+}
+
+
+generate_data <- function(A, n, p){
+  
+  # given an adjacency matrix this function generates
+  # a data matrix with a gaussian stochastic error
+  
+  Sigma = solve(diag(p) - A)
+  X <- matrix(rnorm(n*p), n, p) %*% t(Sigma)
+  return(X)
+  
+}
+```
+
+Then  we split the data by sampling indices randomly. Our function has the "prop" parameter which we have set by default to 0.5 to have two groups of equal size, but it can be generalized.
+```{r, eval=FALSE}
+split_data <- function(X, prop = 0.5){
+  
+  # This function splits the data in train and test set
+  # given a split proportion
+  
+  split <- sample(c(rep(0, prop * nrow(X)), rep(1, (1-prop) * nrow(X))))
+  train <- X[split == 0, ]
+  test <- X[split == 1, ]
+  return(list(train=train, test=test))
+```
+Finally we compute $ U_n $ using MLEdag to get the two different estimates of matrix A (under H0 with the train and H1 with the test).
+
+```{r, eval=FALSE}
+# Test statistics ---------------------------------------------------------
+
+Un <- function(tr, te, idx, mu, D){
+  
+  # estimate the Adjacency matrix
+  out_tr <- MLEdag(X=tr,D=D,tau=0.35,mu=mu,rho=1.2,trace_obj=FALSE)
+  out_te <- MLEdag(X=te,D=D,tau=0.35,mu=mu,rho=1.2,trace_obj=FALSE)
+  A.0 = out_tr$A.H0; A = out_te$A.H1
+  # estimate sigma for constrained and unconstrained
+  sig_alt = sigma_est(A, te, idx)
+  sig_null = sigma_est(A.0, tr, idx)
+  # compute the test statistic
+  x = lik_est(A, tr, idx, sig_alt) - lik_est(A.0, tr, idx, sig_null)
+  return(x)
+  
+}
+
+```
+How you can see we used  other "accessory" functions to obtain the estimate of the variance of the errors (sigma) and to calculate the log-likelyhoods (with different estimates of the parameters but always using the train set).
+For sigma we use the formula in the originale paper "Likelihood Ratio Tests for a Large Directed Acyclic Graph".
+\begin{align*}
+\hat{\sigma}^{2}= (np)^{-1} \sum_{j=1}^{p}\sum_{i=1}^{n}(x_{ij}- \sum_{k\neq j}x_{ik}A_{jk})^2
+\end{align*}
+```{r, eval= FALSE}
+sigma_est <-function(A, X, idx){
+  
+  # this function estimates the sigma of a given matrix
+  
+  c = 1/(dim(X)[1]*length(idx))
+  sss = 0
+  for(j in 1:length(idx)) sss = sss + sigma_square(A, X, j, idx)
+  return(c*sss)
+  
+}
+
+sigma_sum <- function(A, X, i, j, idx){
+  
+  # this function computes the internal sum of the sigma estimate formula
+  
+  s = 0
+  for(k in idx[idx != j]) s = s + X[i, k]*A[j, k]
+  return(s)
+  
+}
+
+
+sigma_square <- function(A, X, j, idx){
+  
+  # this function computes the sum of the squared terms in the
+  # estimated sigma formula
+  
+  ss = 0
+  for(i in 1:dim(X)[1]) ss = ss + (X[i, j] - sigma_sum(A, X, i, j, idx))**2
+  return(ss)
+  
+}
+
+lik_est <- function(A, X, idx, sig){
+  
+  # this function estimates the logLikelihood
+  # of an adjacency matrix given the data
+  
+  c = 1/(2*sig)
+  a = (dim(X)[1]/2)*log(sig)
+  s = 0
+  for(j in 1:length(idx)) s = s + c*sigma_square(A, X, j, idx) + a
+  return(-s)
+  
+}
+
+
+```
+We calculate $ W_n $ directly when we simulate the test because we simply get it in this way:
+(we use exponential for convenience since we work with log-likelyhoods for $ U_n $ )
+```{r, eval=FALSE}
+# compute the test statistics U_n and W_n
+  Un_base = Un(tr, te, idx, mu, D)
+  Un_swap = Un(te, tr, idx, mu, D)
+  Wn = (exp(Un_base) + exp(Un_swap))/2
+```
+## 3. Size and power of universal tests
+The size of a test is defined as
+
+$\alpha$ $= \mathbb{P}$(Commit a type I error) $= \mathbb{P}$(The test says the data and $H0$ are not compatible although $H0$ is true) 
+ 
+while the power is $1- \beta$  where  
+$\beta$ $= \mathbb{P}$(Commit a type II error)= $\mathbb{P}$(The test says the data and $H0$ are not compatible although $H0$ is false)
+
+Specifically we implement two different tests for DAG. 
+
+
+**Graph linkages**
+Let $F$ be an index set where an index $(j, k) \in F$ represents a directed connection. We are interested in testing:
+
+$H0$ : $A[j, k] = 0$  $\forall (j, k) \in F$  vs $H1$ : not $H0$ 
+
+
+**Directed pathway**
+
+
+A directed pathway is specified by an index set $F$ of size $|F|$ where a common segment is shared by any two consecutive indices, like $F = {(j1, j2), (j2, j3), ..)}$.
+We are interested in testing:
+$H0$ : $A[j, k] = 0$ for some $(j, k) ∈ F$ vs $H1$ : $A[j, k]  = 0$  $\forall (j, k) ∈ F$
+ 
+# Cytometry Data
+## 4. Formalized hypotheses 
+**Linkage-type **
+
+1. **PIP3 → Akt**
+
+It's categorized as a missing edge but it’s a well-established influence connection in literature, so it might seem strange that is not present. 
+Actually there are different explanation for this; first of all the fact that Bayesian networks are constrained to be acyclic, so if the underlying network contains feedbackloops, we cannot necessarily expect to cover all connections.
+We also have a limited sample available, with few proteins in specific sites, so it may happen that PIP3 is phosphorylated in a site other than that received by the cytophlorimeter or there is an intermediate (which means "both Akt and PIP3 activated but I cannot prove that it was PIP3 directly").
+
+2. **Erk → Akt** 
+
+3. **PKC → PKA**
+
+We chose both because they are not well known in literature and are therefore important to study in order to discover things that are still unknown.
+They are categorized as reported: the PKC-to-PKA connection was found once in rat ventricular myocytes and the Erk-to-Akt one in colon cancer cell .
+They are also interesting because the show the ability of this Bayesian network analysis to correctly infer causal influences from unperturbed molecules within a network. In this case, Erk was not directly acted on by any activator or inhibitor in the sample sets,yet Erk showed an influence connection to Akt and the model thus predicts that direct perturbation of Erk would influence Akt.
+Furthermore, another interesting aspect is that even if Erk and PKA are correlated the model predicts Erk's perturbation is not expected to affect PKA. 
+This led to study the connection experimenting on the two componentsof Erk: Erk1, Erk2 and to discover that Akt phosphorylation was not affected by the inhibition of Erk2. The connection between Erk1 and Akt can be direct or indirect, involving the mediator molecules yet to be understood, but the connection is supported by both the model and the validation experiment.
+
+**Pathway-type**
+
+**PKC→ Raf→ Mek → Erk → Akt**
+
+We choose this path for two reason.The first is that there are two links from PKC to Mek but none are redundant.
+Infact  the influenceof PKC on Mek, is known to be mediated by Raf through two paths of influence, each mediated by a different active phosphorylated form of the protein Raf. Since in the experiment it was not carried out Raf phosphorylated at S259, one of the two is a direct link but it is not in reality.
+The second reason is that Akt  is a protein that is frequently found mutated in tumors, and it is one of the current problems of research in this area to understand "at what point" this mutation occurs in the signaling pathway. For example try to understand if it is further downstream (therefore due to the activation of Mek or Erk) or is it a "primary" mutation (eg PKC).
+
+## 5. Hypotheses testing  with a single intervention
+## 6. Repeating with more data
