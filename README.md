@@ -4,10 +4,12 @@
 ## Content
 
 **scripts** this folder contains the scripts:
+  - _functions.R_ which contains all the functions to run the scripts
   - _LinkageTest.R_ which contains the implementation of the test for a single link
   - _PathwayTest.R_ which contains the implementation of the test for a directed pathway
   - _Cytometry.R_ which contains the application of the tests on real data
-  - _functions.R_ which contains all the functions to run the scripts
+  - _plotSparsity.R_ which contains the script fro the scatter plots of the test results with different sparsity values 
+  
 
 **cytometry-data.xlsx** is the excel file with 9 different sheets, each one for a different protein
 
