@@ -8,10 +8,13 @@
   - _LinkageTest.R_ which contains the implementation of the test for a single link
   - _PathwayTest.R_ which contains the implementation of the test for a directed pathway
   - _Cytometry.R_ which contains the application of the tests on real data
-  - _plotSparsity.R_ which contains the script fro the scatter plots of the test results with different sparsity values 
-  
+  - _plotSparsity.R_ which contains the script fro the scatter plots of the test results with different sparsity values
 
-**cytometry-data.xlsx** is the excel file with 9 different sheets, each one for a different protein
+**report** this folder contains the final report of the case study:
+  - _Report.html_ is the knitted html file written in rmarkdown
+  
+**data** is a folder which contains:
+  - _cytometry-data.xlsx_ the excel file with 9 different sheets, each one for a different protein
 
 ## Theory concepts
 
