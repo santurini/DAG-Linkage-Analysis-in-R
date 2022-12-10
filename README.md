@@ -1,6 +1,15 @@
 # Linkage Analysis in R
 <img src="https://camo.githubusercontent.com/f0c75c42d670c1153720d72688ab576936104b7b9a80ea336eeba472949394e6/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f522533452533442d332e322e342d3636363666662e737667" style="width:105px"> <img src="https://camo.githubusercontent.com/628aedf920d3cee6c4467d1f63915b015f131749861bcec4178bdeca3cf3810b/68747470733a2f2f7777772e722d706b672e6f72672f6261646765732f76657273696f6e2f75736574686973" style="width:115px"> <img src="https://camo.githubusercontent.com/7d329492423dc3eceea8e9b170b73d4f5e8d4b0c4878376bb0f94c7c91c2608e/68747470733a2f2f73766773686172652e636f6d2f692f5a68792e737667" style="width:80px"> <img src="https://img.shields.io/github/license/Naereen/StrapDown.js.svg" style="width:110px">
 
+## Friendly Reminder
+
+If you use or take inspiration from this repository please cite with this link: [santurini/DAG-Linkage-Analysis-in-R](https://github.com/santurini/DAG-Linkage-Analysis-in-R)
+
+Your support will be truly appreciated and feel free to contact me at my following links or just send me an email:
+- [Linkedin](https://www.linkedin.com/in/arturo-ghinassi-50b8a0219/)
+- [Kaggle](https://www.kaggle.com/santurini)
+- ghinassi.1863151@studenti.uniroma1.it
+
 ## Overview
 
 In this work we implemented to universal hypothesis test to check whether a link or a path existed or not in a directed acyclic graph.
