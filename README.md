@@ -75,3 +75,11 @@ Once implemented we tested them on real world [data](https://docs.google.com/spr
           <img src="https://user-images.githubusercontent.com/91251307/152529840-011ffda1-abc6-43a5-8e48-3352969419a4.png" style="width:600px">
         </p>
   4) Applying the test on real world data to check linkages between proteins
+  
+  <br />
+<br />
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/50860347/147412786-183da6b0-990f-4016-9f2e-0719d8066f5b.png" style="width: 100%"/>
+<p>
+
+<br />
