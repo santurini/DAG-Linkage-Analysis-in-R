@@ -4,7 +4,6 @@
 ## Friendly Reminder
 
 If you use or take inspiration from this repository please cite with this link: [santurini/DAG-Linkage-Analysis-in-R](https://github.com/santurini/DAG-Linkage-Analysis-in-R)
-
 Your support will be truly appreciated and feel free to contact me at my following links or just send me an email:
 - [Linkedin](https://www.linkedin.com/in/arturo-ghinassi-50b8a0219/)
 - [Kaggle](https://www.kaggle.com/santurini)
